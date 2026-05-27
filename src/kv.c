@@ -145,7 +145,8 @@ void kv_free(kv_t *table) {
     }
 
     for (size_t i = 0; i < table->capacity; i++) {
-        free(table->entries[i].key);
+        if (table->entries[i].key != (void*)TOMBSTONE)
+            free(table->entries[i].key);
         free(table->entries[i].value);
     }
 
