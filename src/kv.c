@@ -43,7 +43,7 @@ size_t hash(char *val, size_t capacity) {
     return hash % capacity;
 }
 
-ssize_t kv_put(kv_t *db, char *key, char *value) {
+int kv_put(kv_t *db, char *key, char *value) {
     if (!db || !key || !value) return -1;
 
     size_t index = hash(key, db->capacity);
