@@ -2,7 +2,6 @@
 #define KV_H
 
 #include <stdlib.h>
-#include <sys/types.h>
 
 typedef struct {
     char    *key;
@@ -16,7 +15,7 @@ typedef struct {
 } kv_t;
 
 kv_t *kv_init(size_t capacity); // returns a kv_t pointer
-ssize_t kv_put(kv_t *db, char *key, char *value); // returns the index, -1 on error, -2 if full
+int kv_put(kv_t *db, char *key, char *value); // returns the index, -1 on error, -2 if full
 void kv_free(kv_t *table);
 
 #endif
