@@ -1,4 +1,8 @@
 #include "kv.h"
+#include <stdlib.h>
+#include <string.h>
+
+#define TOMBSTONE 0x1
 
 kv_t *kv_init(size_t capacity) {
     if (capacity == 0) return NULL;
@@ -20,13 +24,71 @@ kv_t *kv_init(size_t capacity) {
     return table;
 }
 
+// fn kv_put
+// params:
+//  - db: pointer to the db
+//  - key: pointer to the key value
+//  - value: pointer to the value itself
+// returns the index of the key , otherwise on error returns -1; on not found -2
+
+size_t hash(char *val, size_t capacity) {
+    size_t hash = 0x13371337deadbeef;
+
+    while (*val) {
+        hash ^= *val;
+        hash = hash << 8;
+        hash += *val;
+        val++;
+    }
+    return hash % capacity;
+}
+
+ssize_t kv_put(kv_t *db, char *key, char *value) {
+    if (!db || !key || !value) return -1;
+
+    size_t index = hash(key, db->capacity);
+
+    for (size_t i = 0; i < db->capacity; i++) {
+        size_t real_index = (index + i) % db->capacity;
+        kv_entry_t *entry = &db->entries[real_index];
+
+        // key set, just update
+        if (entry->key && entry->key != (void*)TOMBSTONE && !strcmp(entry->key, key)) {
+            char *newval = strdup(value);
+
+            if (!newval) return -1;
+            free(entry->value); // free the previous value before overwriting
+            entry->value = newval;
+            return real_index;
+        }
+
+        // land in "empty" slot, null/tombstone (deleted)
+        if (!entry->key || entry->key == (void*)TOMBSTONE) {
+            char *newval = strdup(value);
+            char *newkey = strdup(key);
+
+            if (!newval || !newkey) {
+                free(newval);
+                free(newkey); // free both in case one allocation succeds and the other does not
+                return -1;
+            }
+            entry->value = newval;
+            entry->key = newkey;
+            db->count++;
+            return real_index;
+        }
+    }
+
+    return -2;
+}
+
 void kv_free(kv_t *table) {
     if (table == NULL) {
         return;
     }
 
     for (size_t i = 0; i < table->capacity; i++) {
-        free(table->entries[i].kv);
+        free(table->entries[i].key);
         free(table->entries[i].value);
     }
 
