@@ -59,7 +59,7 @@ int kv_put(kv_t *db, char *key, char *value) {
             if (!newval) return -1;
             free(entry->value); // free the previous value before overwriting
             entry->value = newval;
-            return real_index;
+            return 0;
         }
 
         // land in "empty" slot, null/tombstone (deleted)
@@ -75,7 +75,7 @@ int kv_put(kv_t *db, char *key, char *value) {
             entry->value = newval;
             entry->key = newkey;
             db->count++;
-            return real_index;
+            return 0;
         }
     }
 
