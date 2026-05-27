@@ -82,6 +82,32 @@ int kv_put(kv_t *db, char *key, char *value) {
     return -2;
 }
 
+// fn kv_get
+// params:
+//  - db: pointer to the db
+//  - key: pointer to the key value
+// returns the pointer to the value, or NULL if not found
+
+char *kv_get(kv_t *db, char *key) {
+    if (!db || !key) return NULL;
+
+    size_t index = hash(key, db->capacity);
+
+    for (size_t i = 0; i < db->capacity; i++) {
+        size_t real_index = (index + i) % db->capacity;
+
+        kv_entry_t *entry = &db->entries[real_index];
+
+        if (entry->key == NULL) return NULL;
+
+        if (entry->key && entry->key != (void*)TOMBSTONE && !strcmp(entry->key, key)) {
+            return entry->value;
+        }
+    }
+
+    return NULL;
+}
+
 void kv_free(kv_t *table) {
     if (table == NULL) {
         return;
