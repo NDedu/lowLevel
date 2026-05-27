@@ -146,7 +146,7 @@ int kv_delete(kv_t *db, char *key) {
 int kv_free(kv_t *db) {
     if (!db) return -1;
 
-    for (size_t i = 0; i < db->capacity; i++) {
+    for (int i = 0; i < db->capacity; i++) {
         kv_entry_t *entry = &db->entries[i];
 
         if (entry->key && entry->key != (void*)TOMBSTONE) {
