@@ -139,17 +139,26 @@ int kv_delete(kv_t *db, char *key) {
     return -1;
 }
 
-void kv_free(kv_t *table) {
-    if (table == NULL) {
-        return;
+// fn kv_free
+// params:
+//  - *kv_table: pointer to the kv table
+// returns 0 on success or -1 on failure
+int kv_free(kv_t *db) {
+    if (!db) return -1;
+
+    for (size_t i = 0; i < db->capacity; i++) {
+        kv_entry_t *entry = &db->entries[i];
+
+        if (entry->key && entry->key != (void*)TOMBSTONE) {
+            free(entry->key);
+            free(entry->value);
+            entry->key = NULL;
+            entry->value = NULL;
+            db->count--;
+        }
     }
 
-    for (size_t i = 0; i < table->capacity; i++) {
-        if (table->entries[i].key != (void*)TOMBSTONE)
-            free(table->entries[i].key);
-        free(table->entries[i].value);
-    }
-
-    free(table->entries);
-    free(table);
+    free(db->entries);
+    free(db);
+    return 0;
 }
