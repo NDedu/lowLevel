@@ -2,11 +2,13 @@
 #include <pthread.h>
 #include <stddef.h>
 
+#define THREADPOOL_MAGIC 0x54504F4Cu // "TPOL", marks a live pool
+
 static void *worker(void *threadpool) {
     threadpool_t *pool = (threadpool_t *)threadpool;
 
     while (1) {
-        pthread_mutex_lock(&(pool->lock));
+        if (pthread_mutex_lock(&(pool->lock)) != 0) break;
 
         while (pool->queued == 0 && !pool->stop) {
             pthread_cond_wait(&(pool->notify), &(pool->lock));
@@ -47,6 +49,9 @@ int threadpool_init(threadpool_t *pool) {
         return -1;
     }
 
+    // Live from here on so the error path below can hand cleanup to destroy.
+    pool->magic = THREADPOOL_MAGIC;
+
     for (int i = 0; i < THREADS; i++) {
         if (pthread_create(&(pool->threads[i]), NULL, worker, pool) != 0) {
             threadpool_destroy(pool);
@@ -60,6 +65,7 @@ int threadpool_init(threadpool_t *pool) {
 
 int threadpool_add_task(threadpool_t *pool, void (*function)(void *arg), void *arg) {
     if (!pool || !function) return -1;
+    if (pool->magic != THREADPOOL_MAGIC) return -1;
 
     if (pthread_mutex_lock(&(pool->lock)) != 0) return -1;
 
@@ -86,18 +92,22 @@ int threadpool_add_task(threadpool_t *pool, void (*function)(void *arg), void *a
 
 int threadpool_destroy(threadpool_t *pool) {
     if (!pool) return -1;
+    if (pool->magic != THREADPOOL_MAGIC) return -1;
 
     if (pthread_mutex_lock(&(pool->lock)) != 0) return -1;
+    pool->magic = 0; // reject later calls before the primitives go away
     pool->stop = 1;
     pthread_cond_broadcast(&(pool->notify));
     pthread_mutex_unlock(&(pool->lock));
 
+    int err = 0;
     for (int i = 0; i < pool->started; i++) {
-        pthread_join(pool->threads[i], NULL);
+        if (pthread_join(pool->threads[i], NULL) != 0) err = -1;
     }
+    pool->started = 0;
 
     pthread_mutex_destroy(&(pool->lock));
     pthread_cond_destroy(&(pool->notify));
 
-    return 0;
+    return err;
 }
